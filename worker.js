@@ -11,9 +11,12 @@ async function handleRequest(request) {
         const logs = [];
 
         for (const key of list.keys) {
-            const data = await IP_LOGGER_KV.get(key.name, { type: "json" });
-            if (data) {
-                logs.push({ key: key.name, ...data });
+            const rawData = await IP_LOGGER_KV.get(key.name);
+            try {
+                const data = JSON.parse(rawData); // Ensure valid JSON
+                logs.push(data);
+            } catch (error) {
+                console.error("Invalid JSON in KV:", rawData);
             }
         }
 
@@ -24,25 +27,12 @@ async function handleRequest(request) {
 
     const ip = request.headers.get("CF-Connecting-IP") || "Unknown IP";
     const timestamp = new Date().toISOString();
-    const key = `ip_${timestamp.replace(/[:.]/g, "-")}`; // Ensure valid KV key format
 
-    // Get geolocation data from Cloudflare
-    const geo = request.cf || {};
-    const locationData = {
-        ip,
-        timestamp,
-        country: geo.country || "Unknown",
-        city: geo.city || "Unknown",
-        region: geo.region || "Unknown",
-        latitude: geo.latitude || "Unknown",
-        longitude: geo.longitude || "Unknown",
-    };
+    // Store IP & timestamp with proper JSON formatting
+    const key = `log_${Date.now()}`;  // Using timestamp-based unique keys
+    const value = JSON.stringify({ ip, timestamp });
 
-    // Store IP and location details in KV
-    await IP_LOGGER_KV.put(key, JSON.stringify(locationData));
+    await IP_LOGGER_KV.put(key, value);
 
-    return new Response(
-        `Your IP (${ip}) has been logged at ${timestamp} in ${locationData.city}, ${locationData.country}`,
-        { status: 200 }
-    );
+    return new Response(`Your IP (${ip}) has been logged at ${timestamp}`, { status: 200 });
 }
