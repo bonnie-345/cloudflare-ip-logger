@@ -11,8 +11,10 @@ async function handleRequest(request) {
         const logs = [];
 
         for (const key of list.keys) {
-            const data = await IP_LOGGER_KV.get(key.name);
-            logs.push({ key: key.name, data });
+            const data = await IP_LOGGER_KV.get(key.name, { type: "json" });
+            if (data) {
+                logs.push({ key: key.name, ...data });
+            }
         }
 
         return new Response(JSON.stringify(logs, null, 2), {
@@ -24,8 +26,23 @@ async function handleRequest(request) {
     const timestamp = new Date().toISOString();
     const key = `ip_${timestamp.replace(/[:.]/g, "-")}`; // Ensure valid KV key format
 
-    // Store IP and timestamp in KV
-    await IP_LOGGER_KV.put(key, JSON.stringify({ ip, timestamp }));
+    // Get geolocation data from Cloudflare
+    const geo = request.cf || {};
+    const locationData = {
+        ip,
+        timestamp,
+        country: geo.country || "Unknown",
+        city: geo.city || "Unknown",
+        region: geo.region || "Unknown",
+        latitude: geo.latitude || "Unknown",
+        longitude: geo.longitude || "Unknown",
+    };
 
-    return new Response(`Your IP (${ip}) has been logged at ${timestamp}`, { status: 200 });
+    // Store IP and location details in KV
+    await IP_LOGGER_KV.put(key, JSON.stringify(locationData));
+
+    return new Response(
+        `Your IP (${ip}) has been logged at ${timestamp} in ${locationData.city}, ${locationData.country}`,
+        { status: 200 }
+    );
 }
