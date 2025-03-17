@@ -4,5 +4,10 @@ addEventListener("fetch", event => {
 
 async function handleRequest(request) {
     const ip = request.headers.get("CF-Connecting-IP");
-    return new Response(`Your IP is: ${ip}`, { status: 200 });
+    const timestamp = new Date().toISOString();
+    
+    // Store the IP in Cloudflare KV
+    await IP_LOGGER_KV.put(ip, timestamp);
+
+    return new Response(`Your IP (${ip}) has been logged at ${timestamp}`, { status: 200 });
 }
