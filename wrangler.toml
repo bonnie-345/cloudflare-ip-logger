@@ -1,4 +1,7 @@
 name = "cloudflare-ip-logger"
-type = "javascript"
 main = "worker.js"
 compatibility_date = "2024-03-17"
+
+[[kv_namespaces]]
+binding = "IP_LOGGER_KV"
+id = "IP_Logger"
